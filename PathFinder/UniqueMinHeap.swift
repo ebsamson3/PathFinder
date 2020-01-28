@@ -8,22 +8,20 @@
 
 import SwiftUI
 
+/// Data structure that facilitates removal of the min value with an O(1) time efficiency. Only 1 item per unique ID can be inserted into the heap. New items with ID's already present in the heap will replace the old heaped items.
 class UniqueMinHeap<T: Identifiable & Comparable> {
 	
 	private var items = [T]()
 	private var positions = [T.ID: Int]()
 	
+	//MARK: API
+	
+	/// Gets min value w/o removing from heap
 	func peek() -> T? {
 		return items.first
 	}
 	
-	func checkFor(itemWithId id: T.ID) -> T? {
-		guard let position = positions[id] else {
-			return nil
-		}
-		return items[position]
-	}
-	
+	/// Gets min value and removes it from the heap
 	func poll() -> T? {
 		
 		guard let lastItem = items.popLast() else {
@@ -44,6 +42,7 @@ class UniqueMinHeap<T: Identifiable & Comparable> {
 		return firstItem
 	}
 	
+	/// Adds a new item to the heap
 	func add(_ item: T) {
 		
 		let position: Int
@@ -69,6 +68,16 @@ class UniqueMinHeap<T: Identifiable & Comparable> {
 		heapifyDown(from: newPosition)
 	}
 	
+	/// Check to see if an item with the correpsonding ID is already in the heap
+	func checkFor(itemWithId id: T.ID) -> T? {
+		guard let position = positions[id] else {
+			return nil
+		}
+		return items[position]
+	}
+	
+	//MARK: Helper functions for finding parent and child heap items
+	
 	private func getLeftChildIndex(of index: Int) -> Int? {
 		let childIndex = 2 * index + 1
 		return childIndex < items.count ? childIndex : nil
@@ -83,12 +92,16 @@ class UniqueMinHeap<T: Identifiable & Comparable> {
 		return index > 0 ? (index - 1) / 2 : nil
 	}
 	
+	//MARK: Heap state management
+	
+	/// Swap two item positions in heap
 	private func swapAt(_ i: Int, _ j: Int) {
 		positions.updateValue(i, forKey: items[j].id)
 		positions.updateValue(j, forKey: items[i].id)
 		items.swapAt(i, j)
 	}
 	
+	// Move item up in heap if it's value is less than any number of it's parents
 	private func heapifyUp(from index: Int) {
 		var index = index
 		
@@ -101,6 +114,7 @@ class UniqueMinHeap<T: Identifiable & Comparable> {
 		}
 	}
 	
+	// Move item down in heap if it's value is greater than any of it's parents
 	private func heapifyDown(from index: Int) {
 		var index = index
 		
