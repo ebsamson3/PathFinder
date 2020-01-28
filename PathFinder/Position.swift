@@ -8,4 +8,5 @@
 
 import Foundation
 
+// Position in a 2-D array
 typealias Position = (row: Int, column: Int)

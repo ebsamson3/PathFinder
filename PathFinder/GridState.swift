@@ -8,6 +8,7 @@
 
 import UIKit
 
+/// Possible state values for each position of a grid that on which shortest path algorithms can be applied. 
 enum GridState: Int {
 	case empty
 	case start

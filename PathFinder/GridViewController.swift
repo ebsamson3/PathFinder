@@ -37,11 +37,11 @@ class GridViewController: UIViewController {
 		}
 		
 		viewModel.reloadItemAtPosition = { [weak self] position in
-			self?.gridView.reloadItem(at: position)
+			self?.gridView.reloadTile(at: position)
 		}
 		
 		viewModel.reloadItemsAtPositions = { [weak self] positions in
-			self?.gridView.reloadItems(atPositions: positions)
+			self?.gridView.reloadTiles(atPositions: positions)
 		}
 	}
 	
@@ -155,11 +155,11 @@ extension GridViewController: GridViewDelegate {
 		viewModel.touchedEnded(at: position)
 	}
 	
-	func gridView(_ gridView: GridView, foregroundColorForItemAt position: Position) -> UIColor? {
+	func gridView(_ gridView: GridView, foregroundColorForTileAt position: Position) -> UIColor? {
 		return viewModel.foregroundColorForItem(at: position)
 	}
 	
-	func gridView(_ gridView: GridView, backgroundColorForItemAt position: Position) -> UIColor? {
+	func gridView(_ gridView: GridView, backgroundColorForTileAt position: Position) -> UIColor? {
 		return viewModel.backgroundColorForItem(at: position)
 	}
 }

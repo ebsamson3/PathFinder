@@ -14,16 +14,18 @@ protocol GridViewDelegate: AnyObject {
 	func gridView(_ gridView: GridView, touchesBeganAt position: Position)
 	func gridView(_ gridView: GridView, touchesMovedTo position: Position)
 	func gridView(_ gridView: GridView, touchesEndedAt position: Position)
-	func gridView(_ gridView: GridView, foregroundColorForItemAt position: Position) -> UIColor?
-	func gridView(_ gridView: GridView, backgroundColorForItemAt position: Position) -> UIColor?
+	func gridView(_ gridView: GridView, foregroundColorForTileAt position: Position) -> UIColor?
+	func gridView(_ gridView: GridView, backgroundColorForTileAt position: Position) -> UIColor?
 }
 
+/// Grid of tiles with a circular foreground and a bordered, square background
 class GridView: UIView {
 	
 	weak var delegate: GridViewDelegate?
 	
-	private var layers = [[CAShapeLayer]]()
-	private var layerPositions = [ObjectIdentifier: Position]()
+	// Layers for each tile
+	private var tiles = [[CAShapeLayer]]()
+	private var tilePositions = [ObjectIdentifier: Position]()
 
 	init() {
 		super.init(frame: CGRect.zero)
@@ -35,77 +37,82 @@ class GridView: UIView {
 	
 	override func layoutSubviews() {
 		super.layoutSubviews()
-		if layers.isEmpty {
+		if tiles.isEmpty {
 			addSublayers()
 		} else {
 			updateBoundsForSublayers()
 		}
 	}
 	
-	var lastTouchedLayer: CAShapeLayer?
+	// Tracking user interactions
+	
+	var lastTouchedTile: CAShapeLayer?
 	
 	override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
 		guard
 			let point = touches.first?.location(in: nil),
 			let layerTouched = layer.hitTest(point) as? CAShapeLayer,
-			lastTouchedLayer != layerTouched,
-			let position = layerPositions[ObjectIdentifier(layerTouched)]
+			lastTouchedTile != layerTouched,
+			let position = tilePositions[ObjectIdentifier(layerTouched)]
 		else {
 			return
 		}
 		delegate?.gridView(self, touchesBeganAt: position)
-		lastTouchedLayer = layerTouched
+		lastTouchedTile = layerTouched
 	}
 	
 	override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
 		guard
 			let point = touches.first?.location(in: nil),
 			let layerTouched = layer.hitTest(point) as? CAShapeLayer,
-			lastTouchedLayer != layerTouched,
-			let position = layerPositions[ObjectIdentifier(layerTouched)]
+			lastTouchedTile != layerTouched,
+			let position = tilePositions[ObjectIdentifier(layerTouched)]
 		else {
 			return
 		}
 		delegate?.gridView(self, touchesMovedTo: position)
-		lastTouchedLayer = layerTouched
+		lastTouchedTile = layerTouched
 	}
 	
 	override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
 		guard
 			let point = touches.first?.location(in: nil),
 			let layerTouched = layer.hitTest(point) as? CAShapeLayer,
-			let position = layerPositions[ObjectIdentifier(layerTouched)]
+			let position = tilePositions[ObjectIdentifier(layerTouched)]
 		else {
 			return
 		}
 		delegate?.gridView(self, touchesEndedAt: position)
-		lastTouchedLayer = nil
+		lastTouchedTile = nil
 	}
+	
+	// Tiles colors are updated in an analogous way to UITableViewCells 
 	
 	func reload() {
 		addSublayers()
 	}
 	
-	func reloadItem(at position: Position) {
-		setColorsForItem(at: position)
+	func reloadTile(at position: Position) {
+		setColorsForTile(at: position)
 	}
 	
-	func reloadItems(atPositions positions: [Position]) {
+	func reloadTiles(atPositions positions: [Position]) {
 		
 		positions.forEach {
-			setColorsForItem(at: $0)
+			setColorsForTile(at: $0)
 		}
 	}
 	
-	private func setColorsForItem(at position: Position) {
-		let layer = layers[position.row][position.column]
-		layer.backgroundColor = delegate?.gridView(self, backgroundColorForItemAt: position)?.cgColor
-		layer.fillColor = delegate?.gridView(self, foregroundColorForItemAt: position)?.cgColor
+	private func setColorsForTile(at position: Position) {
+		let tile = tiles[position.row][position.column]
+		tile.backgroundColor = delegate?.gridView(self, backgroundColorForTileAt: position)?.cgColor
+		tile.fillColor = delegate?.gridView(self, foregroundColorForTileAt: position)?.cgColor
 	}
 	
+	/// Adds a shape layer for each tile to the main grid view
 	private func addSublayers() {
 		layer.sublayers?.removeAll()
-		layerPositions.removeAll()
+		tilePositions.removeAll()
 		
 		guard let delegate = delegate else {
 			return
@@ -114,61 +121,61 @@ class GridView: UIView {
 		let numberOfRows = delegate.numberOfRows(in: self)
 		let numberOfColumns = delegate.numberOfColumns(in: self)
 		
-		layers = [[CAShapeLayer]]()
+		tiles = [[CAShapeLayer]]()
 		
 		CATransaction.begin()
-		
-		CATransaction.setDisableActions(true)
+		CATransaction.setDisableActions(true) // Stops default animations
 		
 		for row in 0..<numberOfRows {
-			layers.append([])
+			tiles.append([])
 			
 			for column in 0..<numberOfColumns {
-				let item = CAShapeLayer()
-				layers[row].append(item)
+				let tile = CAShapeLayer()
+				tiles[row].append(tile)
 				let position: Position = (row: row, column: column)
-				setColorsForItem(at: position)
-				item.borderColor = UIColor.darkGray.cgColor
-				item.borderWidth = 1
-				layerPositions[ObjectIdentifier(item)] = (row: row, column: column)
-				layer.addSublayer(item)
+				setColorsForTile(at: position)
+				tile.borderColor = UIColor.darkGray.cgColor
+				tile.borderWidth = 1
+				tilePositions[ObjectIdentifier(tile)] = (row: row, column: column)
+				layer.addSublayer(tile)
 			}
 		}
 		CATransaction.commit()
 		updateBoundsForSublayers()
 	}
 	
+	// Updates the bounds and circumscribed circular paths of each sublayer
 	private func updateBoundsForSublayers() {
-		guard !layers.isEmpty else {
+		guard !tiles.isEmpty else {
 			return
 		}
 		
-		guard let numberOfColumns = layers.first?.count else {
+		guard let numberOfColumns = tiles.first?.count else {
 			return
 		}
 		
-		let numberOfRows = layers.count
-		let itemWidth = floor(bounds.width / CGFloat(numberOfColumns))
-		let itemHeight = floor(bounds.height / CGFloat(numberOfRows))
-		let leftoverHorizontalPixels = Int(bounds.width - itemWidth * CGFloat(numberOfColumns))
-		let leftoverVerticalPixels = Int(bounds.height - itemHeight * CGFloat(numberOfRows))
+		let numberOfRows = tiles.count
+		let tileWidth = floor(bounds.width / CGFloat(numberOfColumns))
+		let tileHeight = floor(bounds.height / CGFloat(numberOfRows))
+		let leftoverHorizontalPixels = Int(bounds.width - tileWidth * CGFloat(numberOfColumns))
+		let leftoverVerticalPixels = Int(bounds.height - tileHeight * CGFloat(numberOfRows))
 		
 		for row in 0..<numberOfRows {
 			
-			let height = CGFloat(itemHeight + (row < leftoverVerticalPixels ? 1 : 0))
-			let y = itemHeight * CGFloat(row) + CGFloat(min(row, leftoverVerticalPixels))
+			let height = CGFloat(tileHeight + (row < leftoverVerticalPixels ? 1 : 0))
+			let y = tileHeight * CGFloat(row) + CGFloat(min(row, leftoverVerticalPixels))
 			
 			for column in 0..<numberOfColumns {
-				let width = CGFloat(itemWidth + (column < leftoverHorizontalPixels ? 1 : 0))
-				let x = itemWidth * CGFloat(column) + CGFloat(min(column, leftoverHorizontalPixels))
-				let layerFrame = CGRect(x: x, y: y, width: width, height: height)
-				let item = layers[row][column]
-				item.frame = layerFrame
+				let width = CGFloat(tileWidth + (column < leftoverHorizontalPixels ? 1 : 0))
+				let x = tileWidth * CGFloat(column) + CGFloat(min(column, leftoverHorizontalPixels))
+				let tileFrame = CGRect(x: x, y: y, width: width, height: height)
+				let tile = tiles[row][column]
+				tile.frame = tileFrame
 				
-				let layerBounds = item.bounds
+				let tileBounds = tile.bounds
 				
-				let center = CGPoint(x: layerBounds.midX, y: layerBounds.midY)
-				let radius = (min(layerBounds.width, layerBounds.height) - 2) / 2
+				let center = CGPoint(x: tileBounds.midX, y: tileBounds.midY)
+				let radius = (min(tileBounds.width, tileBounds.height) - 2) / 2
 				
 				let path = UIBezierPath(
 					arcCenter: center,
@@ -177,7 +184,7 @@ class GridView: UIView {
 					endAngle: 2 * CGFloat.pi,
 					clockwise: true)
 				
-				item.path = path.cgPath
+				tile.path = path.cgPath
 			}
 		}
 	}
