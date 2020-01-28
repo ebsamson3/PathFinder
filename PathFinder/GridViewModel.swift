@@ -280,7 +280,9 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 	}
 	
 	private func cleanUpAnimation() {
-		guard let currentSteps = currentOutput?.steps
+		guard
+			let currentSteps = currentOutput?.steps,
+			!currentSteps.isEmpty
 		else {
 			return
 		}

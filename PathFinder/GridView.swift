@@ -105,6 +105,7 @@ class GridView: UIView {
 	
 	private func setColorsForTile(at position: Position) {
 		let tile = tiles[position.row][position.column]
+		
 		tile.backgroundColor = delegate?.gridView(self, backgroundColorForTileAt: position)?.cgColor
 		tile.fillColor = delegate?.gridView(self, foregroundColorForTileAt: position)?.cgColor
 	}
