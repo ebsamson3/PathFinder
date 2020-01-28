@@ -12,13 +12,13 @@ protocol GridViewRepresentable: AnyObject {
 	var numberOfRows: Int { get }
 	var numberOfColumns: Int { get }
 	var reload: (() -> Void)? { get set }
-	var reloadItemAtPosition: ((Position) -> Void)? { get set }
-	var reloadItemsAtPositions: (([Position]) -> Void)? { get set }
+	var reloadTileAtPosition: ((Position) -> Void)? { get set }
+	var reloadTilessAtPositions: (([Position]) -> Void)? { get set }
 	
 	func touchesBegan(at position: Position)
 	func touchesMoved(to position: Position)
 	func touchedEnded(at position: Position)
-	func backgroundColorForItem(at position: Position) -> UIColor?
-	func foregroundColorForItem(at position: Position) -> UIColor?
+	func backgroundColorForTile(at position: Position) -> UIColor?
+	func foregroundColorForTile(at position: Position) -> UIColor?
 	func clearGrid()
 }

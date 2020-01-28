@@ -8,11 +8,12 @@
 
 import UIKit
 
+/// Manages the connection between path finding and grid display
 class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 	
 	var reload: (() -> Void)?
-	var reloadItemAtPosition: ((Position) -> Void)?
-	var reloadItemsAtPositions: (([Position]) -> Void)?
+	var reloadTileAtPosition: ((Position) -> Void)?
+	var reloadTilessAtPositions: (([Position]) -> Void)?
 	
 	var numberOfRows: Int {
 		return Int(gridSize.height)
@@ -22,14 +23,17 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		return Int(gridSize.width)
 	}
 	
+	// Current path and algorithm steps taken to get there
 	var currentOutput: PathFinderOutput?
 	
+	// Variables for handling/tracking algorithm progress animations
 	var isAnimated = false
 	var currentAnimationStep = 0
 	var animationTimer: Timer?
 	
-	private var itemsAlongMin: CGFloat = 11
+	private var tilesAlongMinAxis: CGFloat = 11
 	
+	// Start position of path finding
 	private lazy var startPosition: Position = {
 		
 		let position: Position
@@ -47,6 +51,7 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		return position
 	}()
 	
+	// Targeted end position of path finding algorithm
 	private lazy var endPosition: Position = {
 		
 		let position: Position
@@ -64,15 +69,17 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		return position
 	}()
 	
+	// Variables for grid size and state
 	private lazy var gridSize: CGSize = calculateGridSize()
 	private lazy var grid: [[Int]] = createInitialGrid()
 	
+	// Object for managing path finding logic
 	let pathFinder: PathFinderProtocol
 	
 	init(pathFinder: PathFinderProtocol) {
 		self.pathFinder = pathFinder
 		super.init()
-		run()
+		updateMinPath()
 	}
 	
 	func calculateGridSize() -> CGSize {
@@ -80,10 +87,10 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		let isPortrait = screenSize.width < screenSize.height
 		let minDimension = isPortrait ? screenSize.width : screenSize.height
 		let maxDimension = isPortrait ? screenSize.height : screenSize.width
-		let itemsAlongMax: CGFloat = round(itemsAlongMin * maxDimension / minDimension)
+		let itemsAlongMax: CGFloat = round(tilesAlongMinAxis * maxDimension / minDimension)
 		return CGSize(
-			width: isPortrait ? itemsAlongMin : itemsAlongMax,
-			height: isPortrait ? itemsAlongMax : itemsAlongMin)
+			width: isPortrait ? tilesAlongMinAxis : itemsAlongMax,
+			height: isPortrait ? itemsAlongMax : tilesAlongMinAxis)
 	}
 	
 	private func createInitialGrid() -> [[Int]] {
@@ -100,6 +107,8 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 	
 	var gridStateOfInitialTouch: GridState?
 	var displacedGridState: GridState?
+	
+	// Handling state changes in response to user interactions
 	
 	func touchesBegan(at position: Position) {
 		let gridValue = grid[position.row][position.column]
@@ -118,8 +127,8 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		default:
 			return
 		}
-		reloadItemAtPosition?(position)
-		run()
+		reloadTileAtPosition?(position)
+		updateMinPath()
 	}
 	
 	func touchesMoved(to position: Position) {
@@ -159,8 +168,8 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 			}
 		}
 		
-		reloadItemsAtPositions?(positionsToReload)
-		run()
+		reloadTilessAtPositions?(positionsToReload)
+		updateMinPath()
 	}
 	
 	func touchedEnded(at position: Position) {
@@ -168,16 +177,17 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		displacedGridState = nil
 	}
 	
-	func backgroundColorForItem(at position: Position) -> UIColor? {
+	func backgroundColorForTile(at position: Position) -> UIColor? {
 		let gridValue = grid[position.row][position.column]
 		return GridState(rawValue: gridValue)?.backgroundColor
 	}
 	
-	func foregroundColorForItem(at position: Position) -> UIColor? {
+	func foregroundColorForTile(at position: Position) -> UIColor? {
 		let gridValue = grid[position.row][position.column]
 		return GridState(rawValue: gridValue)?.foregroundColor
 	}
 	
+	/// Clears all barriers on current grid
 	func clearGrid() {
 		guard
 			grid.isEmpty == false,
@@ -203,15 +213,16 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 			}
 		}
 		reload?()
-		run()
+		updateMinPath()
 	}
 	
 	func setIsAnimated(to isAnimated: Bool) {
 		self.isAnimated = isAnimated
-		run()
+		updateMinPath()
 	}
 	
-	func run() {
+	/// Finds current min path and updates displayed min path and/or min path finding animations
+	func updateMinPath() {
 		pathFinder.findMinPath(
 			from: startPosition,
 			to: endPosition,
@@ -222,13 +233,14 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 				return
 			}
 			
+			// Clean up old min path & animations
 			self?.animationTimer?.invalidate()
-			
 			self?.cleanUpAnimation()
 			self?.clearCurrentPath()
 			
 			self?.currentOutput = output
 			
+			// If animated update display on a timer otherwise show new min path
 			if strongSelf.isAnimated {
 				let timer = Timer(
 					timeInterval: 0.05,
@@ -246,6 +258,7 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		}
 	}
 	
+	/// Iterates through algorithm steps and makes corresponding updates to the displayed grid
 	@objc private func fireTimer() {
 		guard let currentSteps = currentOutput?.steps else {
 			finishAnimatedRun()
@@ -256,7 +269,7 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 		
 		if grid[position.row][position.column] == GridState.empty.rawValue {
 			grid[position.row][position.column] = GridState.checking.rawValue
-			reloadItemAtPosition?(position)
+			reloadTileAtPosition?(position)
 		}
 		
 		if currentAnimationStep + 1 >= currentSteps.count {
@@ -278,7 +291,7 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 			}
 		}
 		
-		reloadItemsAtPositions?(Array(currentSteps[0...currentAnimationStep]))
+		reloadTilessAtPositions?(Array(currentSteps[0...currentAnimationStep]))
 		currentAnimationStep = 0
 	}
 	
@@ -292,7 +305,7 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 				grid[position.row][position.column] = GridState.empty.rawValue
 			}
 		}
-		reloadItemsAtPositions?(currentPath)
+		reloadTilessAtPositions?(currentPath)
 	}
 	
 	private func displayCurrentPath() {
@@ -306,7 +319,7 @@ class GridViewModel: NSObject, GridViewRepresentable, Animatable {
 			}
 		}
 		
-		reloadItemsAtPositions?(currentPath)
+		reloadTilessAtPositions?(currentPath)
 	}
 	
 	private func finishAnimatedRun() {

@@ -39,11 +39,11 @@ class GridViewController: UIViewController {
 			self?.gridView.reload()
 		}
 		
-		viewModel.reloadItemAtPosition = { [weak self] position in
+		viewModel.reloadTileAtPosition = { [weak self] position in
 			self?.gridView.reloadTile(at: position)
 		}
 		
-		viewModel.reloadItemsAtPositions = { [weak self] positions in
+		viewModel.reloadTilessAtPositions = { [weak self] positions in
 			self?.gridView.reloadTiles(atPositions: positions)
 		}
 	}
@@ -157,11 +157,11 @@ extension GridViewController: GridViewDelegate {
 	}
 	
 	func gridView(_ gridView: GridView, foregroundColorForTileAt position: Position) -> UIColor? {
-		return viewModel.foregroundColorForItem(at: position)
+		return viewModel.foregroundColorForTile(at: position)
 	}
 	
 	func gridView(_ gridView: GridView, backgroundColorForTileAt position: Position) -> UIColor? {
-		return viewModel.backgroundColorForItem(at: position)
+		return viewModel.backgroundColorForTile(at: position)
 	}
 }
 
