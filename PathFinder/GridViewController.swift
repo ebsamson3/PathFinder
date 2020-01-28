@@ -8,6 +8,7 @@
 
 import UIKit
 
+/// Handles grid view display and user interaction
 class GridViewController: UIViewController {
 	
 	private lazy var gridView: GridView = {
@@ -31,6 +32,8 @@ class GridViewController: UIViewController {
 	init(viewModel: GridViewRepresentable & Animatable) {
 		self.viewModel = viewModel
 		super.init(nibName: nil, bundle: nil)
+		
+		// Binding to view model
 		
 		viewModel.reload = { [weak self] in
 			self?.gridView.reload()
@@ -58,6 +61,9 @@ class GridViewController: UIViewController {
 	
 	override func viewWillLayoutSubviews() {
 		super.viewWillLayoutSubviews()
+		
+		// Update grid frame on view bounds changes
+		
 		let topInset = view.safeAreaInsets.top
 		let frame = CGRect(
 			x: view.frame.origin.x,
@@ -72,9 +78,13 @@ class GridViewController: UIViewController {
 	override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
 		super.viewWillTransition(to: size, with: coordinator)
 		
+		// Used to have grid view ignore device orientation changes
+		
 		gridView.isHidden = true
 		
 		coordinator.animate(alongsideTransition: { [weak self] context in
+			
+			//TODO: Decided to hide the grid during rotation so animating the grids rotation changes are no longer neccesary
 			
 			guard let strongSelf = self else {
 				return
@@ -94,6 +104,8 @@ class GridViewController: UIViewController {
 				return
 			}
 			
+			// Rounding transform to undo the additional small angle used to control CA rotation direction
+			
 			var currentTransform = strongSelf.gridView.transform
 			currentTransform.a = round(currentTransform.a)
 			currentTransform.b = round(currentTransform.b)
@@ -108,19 +120,6 @@ class GridViewController: UIViewController {
 	private func configure() {
 		view.backgroundColor = .black
 		view.addSubview(gridView)
-		gridView.frame = view.frame
-	}
-	
-	func calculateGridSize() -> CGSize {
-		let screenSize = UIScreen.main.bounds
-		let isPortrait = screenSize.width < screenSize.height
-		let minDimension = isPortrait ? screenSize.width : screenSize.height
-		let maxDimension = isPortrait ? screenSize.height : screenSize.width
-		let itemsAlongMin: CGFloat = 11
-		let itemsAlongMax: CGFloat = round(itemsAlongMin * maxDimension / minDimension)
-		return CGSize(
-			width: isPortrait ? itemsAlongMin : itemsAlongMax,
-			height: isPortrait ? itemsAlongMax : itemsAlongMin)
 	}
 	
 	@objc private func handleClearGrid(_ sender: UIBarButtonItem) {
@@ -132,6 +131,8 @@ class GridViewController: UIViewController {
 		sender.tintColor = viewModel.isAnimated ? .systemGreen : nil
 	}
 }
+
+//MARK: GridViewDelegate
 
 extension GridViewController: GridViewDelegate {
 	
